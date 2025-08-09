@@ -1,90 +1,109 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Walkie Talkie Skin</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Walkie Talkie Skin Interativo</title>
 <style>
   body {
     background-color: #222;
+    margin: 0; 
+    height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    margin: 0;
+    font-family: Arial, sans-serif;
+    user-select: none;
   }
 
   .walkie-container {
     position: relative;
     width: 350px;
     height: 550px;
-    background: url('r.png') no-repeat center center;
-    background-size: cover;
+    background: url('/mnt/data/c63496b7-a3a2-47ba-ae9c-3e97346755ec.png') no-repeat center center;
+    background-size: contain;
+    box-shadow: 0 0 10px #0008;
   }
 
-  .walkie-btn {
+  /* Campos de texto */
+  input[type="number"] {
+    position: absolute;
+    width: 80px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1.5px solid #333;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    outline: none;
+  }
+
+  input[type="number"]:focus {
+    border-color: orange;
+  }
+
+  /* Meu ID - campo superior */
+  #meuId {
+    top: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* ID destino - campo ao lado do botão chamar */
+  #destinoId {
+    top: 210px;
+    left: 25%;
+  }
+
+  /* Botões */
+  button {
     position: absolute;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
     font-size: 16px;
+    color: white;
+    user-select: none;
+    transition: background-color 0.2s ease;
   }
 
-  /* Botão INICIAR */
+  button:active {
+    filter: brightness(0.8);
+  }
+
   #btn-iniciar {
     top: 100px;
     left: 50%;
     transform: translateX(-50%);
     width: 120px;
     height: 35px;
-    background: #ff9933;
-    color: #fff;
+    background-color: #ff9933;
   }
 
-  /* Campo MEU ID */
-  #meuId {
-    position: absolute;
-    top: 150px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 150px;
-    height: 40px;
-    font-size: 18px;
-    text-align: center;
-    border-radius: 8px;
-    border: none;
-  }
-
-  /* Botão CHAMAR */
   #btn-chamar {
     top: 210px;
-    left: 25%;
-    width: 100px;
+    left: 40%;
+    width: 70px;
     height: 35px;
-    background: #333;
-    color: white;
+    background-color: #333;
   }
 
-  /* Botão FALAR */
-  #talkBtn {
+  #btn-falar {
     top: 210px;
     right: 25%;
     width: 100px;
     height: 35px;
-    background: red;
-    color: white;
+    background-color: red;
   }
 
-  /* Botão TROCAR MODO */
-  #modeBtn {
+  #btn-trocar {
     bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
     width: 150px;
     height: 35px;
-    background: blue;
-    color: white;
+    background-color: blue;
   }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -92,89 +111,143 @@
 <body>
 
 <div class="walkie-container">
-  <button id="btn-iniciar" class="walkie-btn" onclick="iniciar()">INICIAR</button>
-  <input id="meuId" type="text" placeholder="MEU ID">
-  <button id="btn-chamar" class="walkie-btn" onclick="chamar()">CHAMAR</button>
-  <button id="talkBtn" class="walkie-btn">FALAR</button>
-  <button id="modeBtn" class="walkie-btn" onclick="alternarModo()">TROCAR MODO</button>
+  <button id="btn-iniciar">INICIAR</button>
+  <input id="meuId" type="number" min="1" max="100" placeholder="MEU ID" />
+  <input id="destinoId" type="number" min="1" max="100" placeholder="ID DESTINO" />
+  <button id="btn-chamar">CHAMAR</button>
+  <button id="btn-falar">FALAR</button>
+  <button id="btn-trocar">TROCAR MODO</button>
 </div>
 
 <script>
-let peer;
-let conexaoAtiva = null;
-let streamLocal = null;
-let modoLigacao = false;
-let somRadio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  let peer = null;
+  let conexaoAtiva = null;
+  let streamLocal = null;
+  let modoLigacao = false; // false = PTT, true = Ligação contínua
+  const somRadio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 
-function iniciar() {
-  let meuNumero = parseInt(document.getElementById('meuId').value.trim());
-  if (isNaN(meuNumero) || meuNumero < 1 || meuNumero > 100) {
-    alert("Digite um número válido de 1 a 100");
-    return;
-  }
+  const btnIniciar = document.getElementById('btn-iniciar');
+  const btnChamar = document.getElementById('btn-chamar');
+  const btnFalar = document.getElementById('btn-falar');
+  const btnTrocar = document.getElementById('btn-trocar');
+  const inputMeuId = document.getElementById('meuId');
+  const inputDestinoId = document.getElementById('destinoId');
 
-  peer = new Peer("user-" + meuNumero, {
-    host: '0.peerjs.com',
-    port: 443,
-    secure: true
-  });
+  btnIniciar.onclick = iniciar;
+  btnChamar.onclick = chamar;
+  btnTrocar.onclick = alternarModo;
 
-  peer.on('open', id => console.log("Conectado como:", id));
+  // Eventos PTT para o botão FALAR
+  btnFalar.addEventListener('mousedown', iniciarTransmissao);
+  btnFalar.addEventListener('mouseup', pararTransmissao);
+  btnFalar.addEventListener('touchstart', e => { e.preventDefault(); iniciarTransmissao(); });
+  btnFalar.addEventListener('touchend', e => { e.preventDefault(); pararTransmissao(); });
 
-  peer.on('call', call => {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      call.answer(stream);
-      call.on('stream', remoteStream => tocarAudio(remoteStream));
-    });
-  });
-}
-
-function chamar() {
-  let destinoNumero = prompt("Digite o número do amigo (1-100):");
-  if (!destinoNumero || isNaN(destinoNumero) || destinoNumero < 1 || destinoNumero > 100) {
-    alert("Número inválido!");
-    return;
-  }
-
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    streamLocal = stream;
-    conexaoAtiva = peer.call("user-" + destinoNumero, stream);
-    conexaoAtiva.on('stream', remoteStream => tocarAudio(remoteStream));
-  });
-}
-
-function alternarModo() {
-  modoLigacao = !modoLigacao;
-  document.getElementById("modeBtn").textContent = `Modo: ${modoLigacao ? "Ligação" : "Walkie Talkie"}`;
-}
-
-document.getElementById("talkBtn").addEventListener('mousedown', iniciarTransmissao);
-document.getElementById("talkBtn").addEventListener('mouseup', pararTransmissao);
-document.getElementById("talkBtn").addEventListener('touchstart', iniciarTransmissao);
-document.getElementById("talkBtn").addEventListener('touchend', pararTransmissao);
-
-function iniciarTransmissao() {
-  if (!modoLigacao) somRadio.play();
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    streamLocal = stream;
-    if (conexaoAtiva) {
-      conexaoAtiva.peerConnection.getSenders()[0].replaceTrack(stream.getTracks()[0]);
+  function iniciar() {
+    const meuNumero = parseInt(inputMeuId.value.trim());
+    if (isNaN(meuNumero) || meuNumero < 1 || meuNumero > 100) {
+      alert("Digite um número válido de 1 a 100 no MEU ID.");
+      return;
     }
-  });
-}
 
-function pararTransmissao() {
-  if (!modoLigacao && streamLocal) {
-    streamLocal.getTracks().forEach(track => track.stop());
-    streamLocal = null;
+    if (peer) {
+      peer.destroy();
+      peer = null;
+    }
+
+    peer = new Peer("user-" + meuNumero, {
+      host: '0.peerjs.com',
+      port: 443,
+      secure: true
+    });
+
+    peer.on('open', id => {
+      console.log("Conectado como:", id);
+      alert("Conectado como " + id);
+    });
+
+    peer.on('call', call => {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        call.answer(stream);
+        conexaoAtiva = call;
+        call.on('stream', remoteStream => tocarAudio(remoteStream));
+      }).catch(err => {
+        alert("Erro ao acessar microfone: " + err);
+      });
+    });
+
+    alert("Peer inicializado. Agora você pode chamar alguém.");
   }
-}
 
-function tocarAudio(remoteStream) {
-  let audio = new Audio();
-  audio.srcObject = remoteStream;
-  audio.play();
-}
+  function chamar() {
+    if (!peer) {
+      alert("Você precisa iniciar seu walkie talkie primeiro.");
+      return;
+    }
+
+    const destino = parseInt(inputDestinoId.value.trim());
+    if (isNaN(destino) || destino < 1 || destino > 100) {
+      alert("Digite um número válido de 1 a 100 no ID destino.");
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      streamLocal = stream;
+
+      // Se já houver chamada ativa, fecha ela antes
+      if (conexaoAtiva) conexaoAtiva.close();
+
+      conexaoAtiva = peer.call("user-" + destino, stream);
+
+      conexaoAtiva.on('stream', remoteStream => tocarAudio(remoteStream));
+      conexaoAtiva.on('close', () => {
+        alert("Chamada encerrada.");
+        conexaoAtiva = null;
+      });
+
+    }).catch(err => {
+      alert("Erro ao acessar microfone: " + err);
+    });
+  }
+
+  function alternarModo() {
+    modoLigacao = !modoLigacao;
+    btnTrocar.textContent = modoLigacao ? "MODO: LIGAÇÃO" : "MODO: PTT";
+  }
+
+  function iniciarTransmissao() {
+    if (!conexaoAtiva) {
+      alert("Você precisa estar em uma chamada para falar.");
+      return;
+    }
+
+    if (!modoLigacao) {
+      somRadio.play();
+      // Trocar o track do sender para enviar áudio
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        streamLocal = stream;
+        const sender = conexaoAtiva.peerConnection.getSenders().find(s => s.track.kind === 'audio');
+        if (sender) {
+          sender.replaceTrack(stream.getTracks()[0]);
+        }
+      }).catch(err => alert("Erro ao iniciar transmissão: " + err));
+    } else {
+      // No modo ligação contínua, não precisa fazer nada especial aqui
+    }
+  }
+
+  function pararTransmissao() {
+    if (!modoLigacao && streamLocal) {
+      streamLocal.getTracks().forEach(track => track.stop());
+      streamLocal = null;
+    }
+  }
+
+  function tocarAudio(remoteStream) {
+    const audio = new Audio();
+    audio.srcObject = remoteStream;
+    audio.play().catch(e => console.log("Erro ao tocar áudio: ", e));
+  }
 </script>
 
 </body>
